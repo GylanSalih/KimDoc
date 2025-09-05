@@ -1,0 +1,750 @@
+.pageOne {
+  min-height: 100vh;
+  padding-top: 4rem; // Account for fixed header
+  background: var(--color-background);
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  
+  @media (max-width: 640px) {
+    padding: 0 1rem;
+  }
+}
+
+// Header Section
+.header {
+  text-align: center;
+  padding: 3rem 0 3rem;
+  animation: fadeInUp 1s cubic-bezier(0, 0, 0.2, 1);
+  
+  .backButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-muted-foreground);
+    text-decoration: none;
+    font-weight: 500;
+    margin-bottom: 2rem;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    
+    &:hover {
+      color: var(--color-foreground);
+      background: var(--color-muted);
+      border-color: var(--color-border);
+      transform: translateX(-2px);
+    }
+    
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-foreground);
+    }
+  }
+  
+  h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--color-foreground);
+    margin-bottom: 1rem;
+    letter-spacing: -0.025em;
+    
+    @media (max-width: 640px) {
+      font-size: 2.25rem;
+    }
+  }
+  
+  p {
+    font-size: 1.25rem;
+    color: var(--color-muted-foreground);
+    max-width: 40rem;
+    margin: 0 auto;
+    line-height: 1.625;
+    
+    @media (max-width: 640px) {
+      font-size: 1.125rem;
+    }
+  }
+}
+
+// Calendar Styles
+.calendar {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  animation: fadeInUp 0.8s cubic-bezier(0, 0, 0.2, 1) 0.2s both;
+  
+  @media (max-width: 640px) {
+    padding: 1rem;
+  }
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    margin: 0;
+    flex: 1;
+  }
+}
+
+.monthSelectorButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  
+  &:hover {
+    background: var(--color-accent);
+    border-color: var(--color-muted-foreground);
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-foreground);
+  }
+}
+
+.monthSelector {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  animation: fadeInUp 0.3s ease;
+}
+
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+  
+  // Custom scrollbar
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: var(--color-background);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-muted-foreground);
+    border-radius: 3px;
+  }
+}
+
+.monthButton {
+  padding: 0.75rem 1rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-align: left;
+  
+  &:hover {
+    background: var(--color-accent);
+    border-color: var(--color-muted-foreground);
+    transform: translateY(-1px);
+  }
+  
+  &.selectedMonth {
+    background: #10b981;
+    border-color: #059669;
+    color: white;
+    font-weight: 600;
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-foreground);
+  }
+}
+
+// API Integration Section
+.apiSection {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  animation: fadeInUp 0.8s cubic-bezier(0, 0, 0.2, 1) 0.1s both;
+  
+  @media (max-width: 640px) {
+    padding: 1rem;
+  }
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    margin: 0;
+  }
+}
+
+.apiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.apiCard {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+}
+
+.apiHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  
+  .apiIcon {
+    font-size: 1.5rem;
+  }
+  
+  h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-foreground);
+    margin: 0;
+    flex: 1;
+  }
+}
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+  
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    
+    &:checked + .slider {
+      background-color: #10b981;
+      
+      &:before {
+        transform: translateX(26px);
+      }
+    }
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--color-border);
+    transition: 0.3s;
+    border-radius: 24px;
+    
+    &:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+  }
+}
+
+.apiFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.helpText {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-foreground);
+  margin-bottom: 8px;
+}
+
+.apiFields input {
+    padding: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-size: 0.875rem;
+    transition: all 150ms ease;
+    
+    &:focus {
+      outline: none;
+      border-color: var(--color-foreground);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    &::placeholder {
+      color: var(--color-muted-foreground);
+    }
+  }
+
+.connectionStatus {
+  margin-top: 0.75rem;
+}
+
+.statusMessage {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  
+  .spinning {
+    animation: spin 1s linear infinite;
+  }
+  
+  .success {
+    color: #10b981;
+  }
+  
+  .error {
+    color: #ef4444;
+  }
+}
+
+.connectionButtons {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.connectButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  
+  &:hover:not(:disabled) {
+    background: #059669;
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+  }
+}
+
+.disconnectButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  
+  &:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+  }
+  
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Week Blocks
+.weekBlocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.weekBlock {
+  background: var(--color-muted);
+  border: 2px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    border-color: var(--color-muted-foreground);
+  }
+  
+  &.selected {
+    background: #10b981;
+    border-color: #059669;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px -3px rgb(16 185 129 / 0.3), 0 4px 6px -4px rgb(16 185 129 / 0.3);
+    
+    .weekNumber,
+    .weekDates,
+    .dayCell {
+      color: white !important;
+    }
+    
+    .dayCell {
+      background: rgba(255, 255, 255, 0.2);
+      color: white !important;
+    }
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+.weekHeader {
+  text-align: center;
+  margin-bottom: 1rem;
+  
+  .weekNumber {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--color-foreground);
+    margin-bottom: 0.25rem;
+  }
+  
+  .weekDates {
+    font-size: 0.875rem;
+    color: var(--color-muted-foreground);
+    font-weight: 500;
+  }
+}
+
+.weekDays {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.dayCell {
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+  background: var(--color-background);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+// Generate Section
+.generateSection {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+  animation: fadeInUp 0.8s cubic-bezier(0, 0, 0.2, 1) 0.4s both;
+}
+
+.generateButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: var(--color-foreground);
+  color: var(--color-background);
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-foreground);
+  }
+}
+
+// Text Area Section
+.textareaSection {
+  animation: fadeInUp 0.8s cubic-bezier(0, 0, 0.2, 1) 0.6s both;
+}
+
+.textareaLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  margin-bottom: 0.75rem;
+  font-size: 1.125rem;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  color: var(--color-foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:focus {
+    outline: none;
+    border-color: var(--color-foreground);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  &::placeholder {
+    color: var(--color-muted-foreground);
+  }
+}
+
+
+
+// Animations
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 1024px) {
+  .apiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .weekBlocks {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .apiGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .weekBlocks {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .weekBlock {
+    padding: 0.75rem;
+  }
+  
+  .apiCard {
+    padding: 1rem;
+  }
+  
+  .monthGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .calendarHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    
+    h2 {
+      font-size: 1.25rem;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .pageOne {
+    padding-top: 3.5rem;
+  }
+  
+  .header {
+    padding: 2rem 0 3rem;
+    
+    h1 {
+      font-size: 1.875rem;
+    }
+    
+    p {
+      font-size: 1rem;
+    }
+  }
+  
+  .calendar {
+    padding: 1rem;
+  }
+  
+  .apiSection {
+    padding: 1rem;
+  }
+  
+  .weekBlocks {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  
+  .weekBlock {
+    padding: 0.75rem;
+    
+    .weekHeader {
+      .weekNumber {
+        font-size: 1rem;
+      }
+      
+      .weekDates {
+        font-size: 0.8rem;
+      }
+    }
+  }
+  
+  .dayCell {
+    padding: 0.375rem 0.125rem;
+    font-size: 0.7rem;
+  }
+  
+  .generateButton {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .apiCard {
+    padding: 0.75rem;
+    
+    .apiHeader {
+      gap: 0.75rem;
+      
+      h3 {
+        font-size: 1rem;
+      }
+    }
+  }
+  
+  .monthGrid {
+    grid-template-columns: 1fr;
+    max-height: 250px;
+  }
+  
+  .monthButton {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8rem;
+  }
+  
+  .monthSelectorButton {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}

@@ -244,20 +244,20 @@ img {
 code {
   font-family: 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', 'Source Code Pro', 'Fira Code', 'Droid Sans Mono', 'Courier New', monospace;
   font-size: 0.875em;
-  background: #000000;
-  color: #000000;
+  background: var(--color-muted);
+  color: var(--color-foreground);
   padding: 0.25rem 0.5rem;
   border-radius: 0.125rem;
-  border: 1px solid #000000;
+  border: 1px solid var(--color-border);
 }
 
 pre {
   font-family: 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', 'Source Code Pro', 'Fira Code', 'Droid Sans Mono', 'Courier New', monospace;
-  background: #000000;
-  color: #000000;
+  background: var(--color-muted);
+  color: var(--color-foreground);
   padding: 1rem;
   border-radius: 0.5rem;
-  border: 1px solid #000000;
+  border: 1px solid var(--color-border);
   overflow-x: auto;
   margin-bottom: 1rem;
   
@@ -271,11 +271,11 @@ pre {
 
 // Blockquotes
 blockquote {
-  border-left: 4px solid #000000;
+  border-left: 4px solid var(--color-primary);
   padding-left: 1rem;
   margin-bottom: 1rem;
   font-style: italic;
-  color: #000000;
+  color: var(--color-muted-foreground);
   
   p {
     margin-bottom: 0;
@@ -291,24 +291,24 @@ table {
   th, td {
     padding: 0.5rem 0.75rem;
     text-align: left;
-    border-bottom: 1px solid #000000;
+    border-bottom: 1px solid var(--color-border);
   }
   
   th {
     font-weight: 600;
-    color: #000000;
-    background: #000000;
+    color: var(--color-foreground);
+    background: var(--color-muted);
   }
   
   td {
-    color: #000000;
+    color: var(--color-foreground);
   }
 }
 
 // Horizontal rule
 hr {
   border: none;
-  border-top: 1px solid #000000;
+  border-top: 1px solid var(--color-border);
   margin: 2rem 0;
 }
 
@@ -470,7 +470,7 @@ hr {
 // Focus visible utility for better accessibility
 .focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #000000, 0 0 0 4px #000000;
+  box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-foreground);
 }
 
 // Screen reader only utility

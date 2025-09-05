@@ -1,26 +1,43 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
   server: {
-    port: 3000,
-    open: true,
-  },
-  build: {
-    outDir: 'dist-react',
-    sourcemap: true,
-  },
-  css: {
-    modules: {
-      generateScopedName: '[name]__[local]___[hash:base64:5]',
-      localsConvention: 'camelCase',
-    },
-  },
-}); 
+    proxy: {
+      '/api/webuntis': {
+        target: 'https://ajax.webuntis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/webuntis/, '/WebUntis'),
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
+      },
+      '/api/webuntis-school': {
+        target: 'https://heinrich-hertz-schule.webuntis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/webuntis-school/, '/WebUntis'),
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
+      }
+    }
+  }
+})
