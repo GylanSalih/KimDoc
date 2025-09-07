@@ -212,18 +212,6 @@ npm run build -- --force
 ## 📄 Lizenz
 
 Dieses Projekt steht unter der MIT-Lizenz. Siehe `LICENSE` für Details.
-
-## 👨‍💻 Autor
-
-**Gylan Salih**
-- GitHub: [@GylanSalih](https://github.com/GylanSalih)
-
-## 🙏 Danksagungen
-
-- WebUntis für die API-Dokumentation
-- Vercel für das Hosting
-- Die Open-Source-Community für die verwendeten Libraries
-
 ---
 
 **Hinweis**: Dieses Tool ist für Bildungszwecke entwickelt. Stelle sicher, dass du die Nutzungsbedingungen der integrierten APIs einhältst.
