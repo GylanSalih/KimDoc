@@ -108,6 +108,9 @@ temp/
 /coverage
 /.nyc_output
 
+# Configuration files with sensitive data
+public/config.json
+
 # Misc
 *.tgz
 *.tar.gz 
