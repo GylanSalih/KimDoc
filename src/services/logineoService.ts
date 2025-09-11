@@ -1,395 +1,320 @@
-import { config } from '../utils/config';
+// Logineo/Moodle Service
+// Implementation based on working Moodle API integration from Discord bot
 
-// Types for Logineo/Moodle
-export interface LogineoAuth {
-  token: string;
-  sessionKey: string;
-  userId: number;
-  baseUrl: string;
-}
-
-export interface LogineoUserInfo {
-  id: number;
+export interface LogineoCredentials {
   username: string;
-  fullname: string;
-  email: string;
+  password: string;
+  baseUrl?: string;
 }
 
 export interface LogineoCourse {
   id: number;
-  fullname: string;
   shortname: string;
-  categoryname: string;
-  startdate: number;
-  enddate: number;
-  visible: boolean;
-  progress?: number;
+  fullname: string;
 }
 
 export interface LogineoAssignment {
   id: number;
-  course: number;
   name: string;
-  intro: string;
   duedate: number;
-  allowsubmissionsfromdate: number;
-  grade: number;
-  timemodified: number;
-  coursename?: string;
-}
-
-export interface LogineoGrade {
-  id: number;
-  courseid: number;
-  coursename: string;
-  itemname: string;
-  categoryname: string;
-  graderaw: number;
-  grademax: number;
-  grademin: number;
-  dategraded: number;
+  cutoffdate: number;
+  course: {
+    id: number;
+    shortname: string;
+    fullname: string;
+  };
+  assignments?: LogineoAssignment[];
 }
 
 export interface LogineoData {
-  userInfo: LogineoUserInfo;
   courses: LogineoCourse[];
   assignments: LogineoAssignment[];
-  grades: LogineoGrade[];
-  summary: {
-    totalCourses: number;
-    totalAssignments: number;
-    totalGrades: number;
-    averageGrade: number;
-    lastUpdated: string;
-  };
 }
 
-// Logineo/Moodle authentication - Direct Mobile API approach (CORS-free)
-export const authenticateLogineo = async (): Promise<LogineoAuth> => {
-  console.log('🌐 Logineo/Moodle Mobile API Authentication for Heinrich-Hertz BK');
+// Helper function to check if response contains HTML (indicates error)
+function hasHtml(str: string): boolean {
+  return /<\/?(html|head|body|title)/i.test(str);
+}
+
+// Helper function to parse JSON or return raw text
+async function parseJsonOrText(res: Response): Promise<{ data: any; raw: string }> {
+  const text = await res.text();
+  try {
+    return { data: JSON.parse(text), raw: text };
+  } catch {
+    return { data: null, raw: text };
+  }
+}
+
+// Get authentication token from Moodle
+async function getToken(credentials: LogineoCredentials): Promise<string> {
+  const baseUrl = credentials.baseUrl || 'https://188086.logineonrw-lms.de';
   
-  if (!config.logineo_username || !config.logineo_password) {
-    throw new Error('Logineo-Benutzername oder Passwort fehlt in der config.json');
+  // Clean password (remove common paste errors like "...&password=abc;a")
+  const cleanPass = credentials.password.replace(/;a$/, '');
+
+  const res = await fetch(`${baseUrl}/login/token.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      username: credentials.username,
+      password: cleanPass,
+      service: 'moodle_mobile_app',
+    }),
+  });
+
+  const { data, raw } = await parseJsonOrText(res);
+
+  if (!res.ok) {
+    throw new Error(`Token HTTP ${res.status}: ${raw.slice(0, 300)}`);
   }
 
-  console.log(`🔑 Mobile API login for user: ${config.logineo_username}`);
-  
-  try {
-    const baseUrl = 'https://188086.logineonrw-lms.de';
-    
-    // Direct Mobile API login (CORS-free like WebUntis JSON-RPC)
-    console.log('📱 Attempting Moodle Mobile API login...');
-    
-    const loginResponse = await fetch(`${baseUrl}/login/token.php`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        username: config.logineo_username,
-        password: config.logineo_password,
-        service: 'moodle_mobile_app'
-      }).toString()
-    });
-
-    console.log('🔐 Mobile API login response:', loginResponse.status);
-
-    if (loginResponse.ok) {
-      const responseText = await loginResponse.text();
-      console.log('📄 Mobile API response received');
-
-      // Try to parse mobile API response
-      try {
-        const tokenData = JSON.parse(responseText);
-        if (tokenData.token) {
-          console.log('✅ Mobile API token received!');
-          
-          // Now get proper web session for HTML scraping
-          console.log('🔄 Getting web session for HTML access...');
-          try {
-            // Get login page first
-            const loginPageResponse = await fetch(`${baseUrl}/login/index.php`);
-            let loginToken = '';
-            let initialCookies = '';
-            
-            if (loginPageResponse.ok) {
-              const loginPageHtml = await loginPageResponse.text();
-              const tokenMatch = loginPageHtml.match(/name="logintoken" value="([^"]+)"/);
-              loginToken = tokenMatch ? tokenMatch[1] : '';
-              
-              const setCookieHeaders = loginPageResponse.headers.get('Set-Cookie');
-              if (setCookieHeaders) {
-                initialCookies = setCookieHeaders.split(',').map(c => c.split(';')[0]).join('; ');
-              }
-            }
-
-            // Perform web login
-            const webLoginResponse = await fetch(`${baseUrl}/login/index.php`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Cookie': initialCookies,
-              },
-              body: new URLSearchParams({
-                username: config.logineo_username,
-                password: config.logineo_password,
-                logintoken: loginToken,
-                anchor: ''
-              }).toString()
-            });
-
-            let webSessionCookie = '';
-            if (webLoginResponse.ok) {
-              const loginCookies = webLoginResponse.headers.get('Set-Cookie');
-              if (loginCookies) {
-                const moodleSessionMatch = loginCookies.match(/MoodleSession[^=]*=([^;]+)/);
-                if (moodleSessionMatch) {
-                  webSessionCookie = moodleSessionMatch[0];
-                  console.log('✅ Web session cookie obtained');
-                }
-              }
-            }
-
-            return {
-              token: tokenData.token,
-              sessionKey: webSessionCookie || `MoodleSession=${tokenData.token}`,
-              userId: tokenData.privateid || 1,
-              baseUrl: baseUrl
-            };
-          } catch (webError) {
-            console.log('⚠️ Web session failed, using mobile token only');
-            return {
-              token: tokenData.token,
-              sessionKey: `MoodleSession=${tokenData.token}`,
-              userId: tokenData.privateid || 1,
-              baseUrl: baseUrl
-            };
-          }
-        } else if (tokenData.error) {
-          throw new Error(`Moodle API error: ${tokenData.error}`);
-        }
-      } catch (jsonError) {
-        console.log('⚠️ Mobile API response not JSON, using as session key');
-        return {
-          token: responseText.substring(0, 32) || `mobile_${Date.now()}`,
-          sessionKey: responseText.substring(0, 32) || `mobile_${Date.now()}`,
-          userId: 1,
-          baseUrl: baseUrl
-        };
-      }
+  if (!data) {
+    if (hasHtml(raw)) {
+      throw new Error(`Token returned HTML (likely SSO/redirect or service disabled): ${raw.slice(0, 200)}`);
     }
-
-    throw new Error('Mobile API login failed');
-
-  } catch (error) {
-    console.error('❌ Logineo authentication failed:', error);
-    throw new Error(`Logineo-Authentifizierung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    throw new Error(`Token non-JSON: ${raw.slice(0, 200)}`);
   }
-};
 
-// Get all Logineo/Moodle data (CORS-free approach)
-export const getAllLogineoData = async (): Promise<LogineoData> => {
-  console.log('📚 Starting Logineo/Moodle data collection...');
+  if (data.error) {
+    throw new Error(`Token error: ${data.error} (${data.errorcode || 'no_code'})`);
+  }
+
+  if (!data.token) {
+    throw new Error(`No token returned. Raw: ${raw.slice(0, 200)}`);
+  }
+
+  return data.token;
+}
+
+// Call Moodle web service
+async function callWS(token: string, wsfunction: string, params: Record<string, any> = {}, baseUrl: string): Promise<any> {
+  const res = await fetch(`${baseUrl}/webservice/rest/server.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      moodlewsrestformat: 'json',
+      wstoken: token,
+      wsfunction,
+      ...params,
+    }),
+  });
+
+  const { data, raw } = await parseJsonOrText(res);
+
+  if (!res.ok) {
+    throw new Error(`WS ${wsfunction} HTTP ${res.status}: ${raw.slice(0, 300)}`);
+  }
+
+  if (!data) {
+    if (hasHtml(raw)) {
+      throw new Error(`WS ${wsfunction} returned HTML (likely no service perms): ${raw.slice(0, 200)}`);
+    }
+    throw new Error(`WS ${wsfunction} non-JSON: ${raw.slice(0, 200)}`);
+  }
+
+  if (data.exception) {
+    const msg = `${data.exception}: ${data.message} [${data.errorcode || 'no_code'}]`;
+    throw new Error(`WS ${wsfunction} exception: ${msg}`);
+  }
+
+  return data;
+}
+
+// Get user ID from site info
+async function getUserId(token: string, baseUrl: string): Promise<number> {
+  const info = await callWS(token, 'core_webservice_get_site_info', {}, baseUrl);
+  return info?.userid;
+}
+
+// Get user's courses
+async function getCourses(token: string, userid: number, baseUrl: string): Promise<LogineoCourse[]> {
+  return await callWS(token, 'core_enrol_get_users_courses', { userid }, baseUrl);
+}
+
+// Get assignments for specific courses
+async function getAssignments(token: string, courseIds: number[], baseUrl: string): Promise<any> {
+  const params: Record<string, any> = {};
+  courseIds.forEach((id, i) => {
+    params[`courseids[${i}]`] = id;
+  });
+  return await callWS(token, 'mod_assign_get_assignments', params, baseUrl);
+}
+
+// Format date for display
+export function formatDate(ts: number): string | null {
+  if (!ts || ts <= 0) return null; // No fake 1970 dates
+  const d = new Date(ts * 1000);
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit', 
+    minute: '2-digit'
+  }).format(d).replace(',', '');
+}
+
+// Compact course name (remove prefixes, parentheses, etc.)
+export function compactCourseName(course: LogineoCourse): string {
+  const raw = (course.shortname && String(course.shortname).trim()) ||
+              (course.fullname && String(course.fullname).trim()) || 'Kurs';
+
+  // Remove common FA/FI class prefixes
+  let name = raw
+    .replace(/^(FA|FI)\s*[_ ]*\d{2}\s*[_ ]*\d{0,2}\s*[_ ]*/i, '')
+    .replace(/^(FA|FI)\s*[_ ]*/i, '');
+
+  // Remove parentheses suffixes
+  name = name.replace(/\s*\([^)]*\)\s*/g, ' ');
+
+  // Collapse whitespace
+  name = name.replace(/\s+/g, ' ').trim();
+
+  // Shorten very long names
+  if (name.length > 48) name = name.slice(0, 45) + '…';
+
+  return name;
+}
+
+// Get assignment status
+export function getAssignmentStatus(assignment: LogineoAssignment): string {
+  const now = Math.floor(Date.now() / 1000);
+  const due = assignment.duedate || 0;
+  const cut = assignment.cutoffdate || 0;
+
+  if (due > 0) {
+    if (now < due) {
+      // Soon if within 48h
+      return (due - now <= 48 * 3600) ? '⏳ Bald fällig!' : '✅ Noch Zeit';
+    } else if (cut > 0 && now < cut) {
+      return '⚠️ Überfällig!';
+    } else {
+      return '⚠️ Überfällig!';
+    }
+  } else if (cut > 0) {
+    return (now < cut) ? '✅ Noch Zeit' : '🔒 Geschlossen';
+  } else {
+    return 'Kein Datum...';
+  }
+}
+
+// Generate formatted assignment overview text
+export function generateAssignmentOverview(assignments: LogineoAssignment[]): string {
+  const now = Math.floor(Date.now() / 1000);
   
-  try {
-    // Step 1: Authenticate
-    const auth = await authenticateLogineo();
-    console.log('✅ Logineo authentication successful!');
-
-    const result: LogineoData = {
-      userInfo: {
-        id: 1,
-        username: config.logineo_username || '',
-        fullname: config.logineo_username || 'Student',
-        email: `${config.logineo_username}@hhbk.de`
-      },
-      courses: [],
-      assignments: [],
-      grades: [],
-      summary: {
-        totalCourses: 0,
-        totalAssignments: 0,
-        totalGrades: 0,
-        averageGrade: 0,
-        lastUpdated: new Date().toISOString()
-      }
-    };
-
-    // Step 2: Set user info from successful authentication
-    console.log('👤 Setting user information from successful login...');
-    console.log('✅ User info set successfully');
-
-    // Step 3: Try to get REAL courses from dashboard
-    console.log('📚 Attempting to fetch REAL course data...');
-    try {
-      const dashboardResponse = await fetch(`${auth.baseUrl}/my/`, {
-        method: 'GET',
-        headers: {
-          'Cookie': auth.sessionKey,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-        }
+  // Group assignments by course
+  const courseMap = new Map<number, { course: LogineoCourse; assignments: LogineoAssignment[] }>();
+  
+  assignments.forEach(assignment => {
+    if (!courseMap.has(assignment.course.id)) {
+      courseMap.set(assignment.course.id, {
+        course: assignment.course,
+        assignments: []
       });
-
-      if (dashboardResponse.ok) {
-        const dashboardHtml = await dashboardResponse.text();
-        console.log('✅ Dashboard loaded successfully');
-        
-        // Extract real course data
-        const courseMatches = [...dashboardHtml.matchAll(/href="[^"]*\/course\/view\.php\?id=(\d+)"[^>]*>([^<]+)</g)];
-        if (courseMatches.length > 0) {
-          result.courses = courseMatches.slice(0, 10).map((match, index) => ({
-            id: parseInt(match[1]),
-            fullname: match[2].trim(),
-            shortname: match[2].trim().substring(0, 10),
-            categoryname: '',
-            startdate: Date.now() / 1000,
-            enddate: 0,
-            visible: true,
-            progress: 0
-          }));
-          console.log(`✅ Found ${result.courses.length} REAL courses!`);
-        } else {
-          console.log('⚠️ No courses found in dashboard HTML');
-        }
-
-        // Extract real user info
-        const fullnameMatch = dashboardHtml.match(/<span[^>]*class="[^"]*usertext[^"]*"[^>]*>([^<]+)<\/span>/);
-        if (fullnameMatch) {
-          result.userInfo.fullname = fullnameMatch[1].trim();
-          console.log(`✅ Found real user name: ${result.userInfo.fullname}`);
-        }
-      } else {
-        console.log(`❌ Dashboard request failed: ${dashboardResponse.status}`);
-      }
-    } catch (error) {
-      console.log('❌ CORS blocked real data fetch:', error);
     }
+    courseMap.get(assignment.course.id)!.assignments.push(assignment);
+  });
 
-    // Debug CORS issues
-    console.log(`📊 Current courses found: ${result.courses.length}`);
-    if (result.courses.length === 0) {
-      console.log('❌ CORS is still blocking! No real courses loaded.');
-      console.log('💡 You need to:');
-      console.log('   1. Install CORS browser extension');
-      console.log('   2. Enable it (should show green/active)');
-      console.log('   3. Refresh this page');
-      console.log('   4. Or use Chrome with --disable-web-security');
+  let output = '# 📚 Alle Upload-Hausaufgaben im Überblick\n\n';
+  
+  // Sort courses alphabetically by compact name
+  const sortedCourses = Array.from(courseMap.values())
+    .sort((a, b) => compactCourseName(a.course).localeCompare(compactCourseName(b.course), 'de'));
+
+  for (const { course, assignments: courseAssignments } of sortedCourses) {
+    if (courseAssignments.length === 0) continue;
+    
+    const courseName = compactCourseName(course);
+    output += `**${courseName}**\n`;
+    
+    // Sort assignments by duedate (undefined last)
+    courseAssignments.sort((a, b) => (a.duedate || Infinity) - (b.duedate || Infinity));
+    
+    for (const assignment of courseAssignments) {
+      const status = getAssignmentStatus(assignment);
+      const dueStr = formatDate(assignment.duedate);
+      const cutStr = formatDate(assignment.cutoffdate);
       
-      // Don't create fallback courses - show the problem clearly
-      result.courses = [];
-    }
-
-    // Step 4: Try to get REAL assignments from course pages
-    console.log('📝 Attempting to fetch REAL assignment data...');
-    for (const course of result.courses.slice(0, 3)) {
-      try {
-        console.log(`📖 Checking course: ${course.fullname}`);
-        const courseResponse = await fetch(`${auth.baseUrl}/course/view.php?id=${course.id}`, {
-          method: 'GET',
-          headers: {
-            'Cookie': auth.sessionKey,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-          }
-        });
-
-        if (courseResponse.ok) {
-          const courseHtml = await courseResponse.text();
-          
-          // Check if we're still logged in
-          if (courseHtml.includes('Sie sind nicht angemeldet') || courseHtml.includes('Login bei')) {
-            console.log(`❌ Session expired for course ${course.id} - shows login page`);
-            continue;
-          }
-          
-          // Look for assignments in course content
-          const assignmentMatches = [...courseHtml.matchAll(/<a[^>]*href="[^"]*\/mod\/assign\/view\.php\?id=(\d+)"[^>]*>([^<]+)<\/a>/g)];
-          
-          if (assignmentMatches.length > 0) {
-            assignmentMatches.forEach((match, index) => {
-              result.assignments.push({
-                id: parseInt(match[1]),
-                course: course.id,
-                name: match[2].trim(),
-                intro: '',
-                duedate: 0,
-                allowsubmissionsfromdate: 0,
-                grade: 0,
-                timemodified: Date.now() / 1000,
-                coursename: course.fullname
-              });
-            });
-            console.log(`✅ Found ${assignmentMatches.length} REAL assignments in ${course.fullname}`);
-          }
-        }
-      } catch (error) {
-        console.log(`❌ CORS blocked assignment fetch for course ${course.fullname}:`, error);
-      }
-    }
-    console.log(`📝 Total REAL assignments found: ${result.assignments.length}`);
-
-    // Step 5: Try to get REAL grades
-    console.log('📊 Attempting to fetch REAL grade data...');
-    const currentWeek = Date.now() / 1000; // Fix: Define currentWeek variable
-    try {
-      const gradeResponse = await fetch(`${auth.baseUrl}/grade/report/overview/index.php`, {
-        method: 'GET',
-        headers: {
-          'Cookie': auth.sessionKey,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-        }
-      });
-
-      if (gradeResponse.ok) {
-        const gradeHtml = await gradeResponse.text();
-        
-        // Simple grade extraction - look for grade patterns
-        const gradeMatches = [...gradeHtml.matchAll(/(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/g)];
-        
-        if (gradeMatches.length > 0) {
-          gradeMatches.slice(0, 10).forEach((match, index) => {
-            result.grades.push({
-              id: index + 1,
-              courseid: result.courses[index % result.courses.length]?.id || 0,
-              coursename: result.courses[index % result.courses.length]?.fullname || 'Kurs',
-              itemname: `Bewertung ${index + 1}`,
-              categoryname: 'Leistung',
-              graderaw: parseFloat(match[1]),
-              grademax: parseFloat(match[2]),
-              grademin: 0,
-              dategraded: currentWeek - (7 * 24 * 60 * 60) // One week ago, not timestamp
-            });
-          });
-          console.log(`✅ Found ${result.grades.length} REAL grades`);
-        }
-      }
-    } catch (error) {
-      console.log('❌ CORS blocked grade fetch:', error);
+      let when = '';
+      if (dueStr) when = `fällig am \`${dueStr}\``;
+      else if (cutStr) when = `schließt \`${cutStr}\``;
+      
+      const whenPart = when ? ` (${when})` : '';
+      output += `• ${assignment.name}${whenPart} -> ${status}\n`;
     }
     
-    if (result.grades.length === 0) {
-      console.log('📊 No grades found - this is normal if you have no grades yet');
-    }
-
-    // Calculate summary
-    result.summary = {
-      totalCourses: result.courses.length,
-      totalAssignments: result.assignments.length,
-      totalGrades: result.grades.length,
-      averageGrade: result.grades.length > 0 ? 
-        result.grades.reduce((sum, grade) => sum + grade.graderaw, 0) / result.grades.length : 0,
-      lastUpdated: new Date().toISOString()
-    };
-
-    console.log('🎉 Logineo/Moodle data collection completed successfully!');
-    console.log(`📊 Summary: ${result.summary.totalCourses} Kurse, ${result.summary.totalAssignments} Aufgaben, ${result.summary.totalGrades} Noten`);
-
-    return result;
-
-  } catch (error) {
-    console.error('❌ Logineo data collection failed:', error);
-    throw new Error(`Logineo-Datensammlung fehlgeschlagen: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
+    output += '\n';
   }
+  
+  if (sortedCourses.length === 0) {
+    output += '_Keine sichtbaren Aufgaben gefunden._\n';
+  }
+  
+  return output;
+}
+
+export const logineoService = {
+  async testConnection(credentials: LogineoCredentials): Promise<boolean> {
+    try {
+      await getToken(credentials);
+      return true;
+    } catch (error) {
+      console.error('Logineo connection test failed:', error);
+      return false;
+    }
+  },
+
+  async getAllLogineoData(credentials: LogineoCredentials): Promise<LogineoData> {
+    const baseUrl = credentials.baseUrl || 'https://188086.logineonrw-lms.de';
+    
+    try {
+      const token = await getToken(credentials);
+      const userid = await getUserId(token, baseUrl);
+      const courses = await getCourses(token, userid, baseUrl);
+      const courseIds = (courses || []).map(c => c.id);
+      
+      if (!courseIds.length) {
+        return { courses: [], assignments: [] };
+      }
+
+      const assignmentsResponse = await getAssignments(token, courseIds, baseUrl);
+      
+      // Transform the response to match our interface
+      const allAssignments: LogineoAssignment[] = [];
+      
+      if (assignmentsResponse.courses) {
+        for (const course of assignmentsResponse.courses) {
+          if (course.assignments) {
+            for (const assignment of course.assignments) {
+              allAssignments.push({
+                id: assignment.id,
+                name: assignment.name,
+                duedate: assignment.duedate || 0,
+                cutoffdate: assignment.cutoffdate || 0,
+                course: {
+                  id: course.id,
+                  shortname: course.shortname,
+                  fullname: course.fullname
+                }
+              });
+            }
+          }
+        }
+      }
+
+      return {
+        courses: courses || [],
+        assignments: allAssignments
+      };
+    } catch (error) {
+      console.error('Error fetching Logineo data:', error);
+      throw new Error(`Logineo API Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  },
+
+  // Helper functions for UI
+  formatDate,
+  compactCourseName,
+  getAssignmentStatus,
+  generateAssignmentOverview
 };

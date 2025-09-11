@@ -8,6 +8,7 @@ import Home from './Pages/Home/Home';
 import PageOne from './Pages/PageOne/PageOne';
 import PageTwo from './Pages/PageTwo/PageTwo';
 import PageThree from './Pages/PageThree/PageThree';
+import Logineo from './Pages/Logineo/Logineo';
 import styles from './App.module.scss';
 
 import './fonts/fonts.css';
@@ -32,9 +33,10 @@ const AppContent: React.FC = () => {
 
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/page-1" element={<PageOne />} />
+          <Route path="/berichtsheft" element={<PageOne />} />
           <Route path="/page-2" element={<PageTwo />} />
           <Route path="/page-3" element={<PageThree />} />
+          <Route path="/logineo" element={<Logineo />} />
         </Routes>
 
         <Footer />

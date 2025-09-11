@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, Settings, Zap, CheckCircle, XCircle, Loader, Brain } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, Settings, Zap, CheckCircle, XCircle, Loader, Brain, BookOpen } from 'lucide-react';
 import './PageOne.scss';
 import { 
   getStartOfWeek,
@@ -8,7 +8,7 @@ import {
   formatDateGerman
 } from '../../utils/dateUtils';
 import { auth, getTimeTable, getPeriodContent, getAllWebUntisData, type Auth, type PeriodInfo } from '../../services/untisService';
-import { getAllLogineoData } from '../../services/logineoService';
+import { getAllLogineoData, logineoService, generateAssignmentOverview } from '../../services/logineoService';
 import { webUntisLibrary } from '../../services/webuntisLibrary';
 // Temporarily disabled problematic imports
 // import { getAbsences, type AbsenceData } from '../../services/absence';
@@ -330,7 +330,13 @@ const PageOne: React.FC = () => {
           try {
             console.log(`Loading Logineo/Moodle data for week ${week.id + 1} starting ${week.startDate.toISOString()}`);
             
-            const logineoData = await getAllLogineoData();
+            const credentials = {
+              username: config.logineo_username || '',
+              password: config.logineo_password || '',
+              baseUrl: config.logineo_base_url || 'https://188086.logineonrw-lms.de'
+            };
+
+            const logineoData = await logineoService.getAllLogineoData(credentials);
             
             // Filter data for current week
             const weekStart = week.startDate;
@@ -338,65 +344,61 @@ const PageOne: React.FC = () => {
             const weekStartTime = weekStart.getTime();
             const weekEndTime = weekEnd.getTime();
             
-            // 1. User Info
-            reportText += `  👤 Schüler: ${logineoData.userInfo.fullname || logineoData.userInfo.username}\n`;
-            reportText += `  📧 E-Mail: ${logineoData.userInfo.email || 'Nicht verfügbar'}\n`;
+            // 1. Course Summary
+            if (logineoData.courses.length > 0) {
+              reportText += `  📚 Kurse (${logineoData.courses.length}):\n`;
+              logineoData.courses.slice(0, 5).forEach(course => {
+                const compactName = logineoService.compactCourseName(course);
+                reportText += `    • ${compactName}\n`;
+              });
+              if (logineoData.courses.length > 5) {
+                reportText += `    • ... und ${logineoData.courses.length - 5} weitere\n`;
+              }
+            }
             
-            // 2. Current Week Assignments (due this week or uploaded this week)
+            // 2. Current Week Assignments (due this week)
             const weekAssignments = logineoData.assignments.filter(assignment => {
+              if (!assignment.duedate) return false;
               const dueDate = assignment.duedate * 1000; // Convert to milliseconds
-              const modifiedDate = assignment.timemodified * 1000;
-              return (dueDate >= weekStartTime && dueDate <= weekEndTime) || 
-                     (modifiedDate >= weekStartTime && modifiedDate <= weekEndTime);
+              return dueDate >= weekStartTime && dueDate <= weekEndTime;
             });
             
             if (weekAssignments.length > 0) {
               reportText += `  📝 Aufgaben in dieser Woche (${weekAssignments.length}):\n`;
               weekAssignments.forEach(assignment => {
                 const dueDate = assignment.duedate ? new Date(assignment.duedate * 1000).toLocaleDateString('de-DE') : 'Kein Termin';
-                reportText += `    • ${assignment.name} (${assignment.coursename})\n`;
-                reportText += `      📅 Abgabe: ${dueDate}\n`;
-                if (assignment.intro && assignment.intro.length > 0 && assignment.intro.length < 100) {
-                  // Clean HTML tags from intro
-                  const cleanIntro = assignment.intro.replace(/<[^>]*>/g, '').substring(0, 100);
-                  reportText += `      📄 Beschreibung: ${cleanIntro}...\n`;
-                }
+                const status = logineoService.getAssignmentStatus(assignment);
+                const compactCourseName = logineoService.compactCourseName(assignment.course);
+                reportText += `    • ${assignment.name} - ${status}\n`;
+                reportText += `      📅 Abgabe: ${dueDate} | Kurs: ${compactCourseName}\n`;
               });
             } else {
-              reportText += `    📝 Aufgaben: Keine neuen Aufgaben diese Woche\n`;
+              reportText += `    📝 Aufgaben: Keine fälligen Aufgaben diese Woche\n`;
             }
             
-            // 3. Recent Grades (graded this week)
-            const weekGrades = logineoData.grades.filter(grade => {
-              const gradeDate = grade.dategraded * 1000;
-              return gradeDate >= weekStartTime && gradeDate <= weekEndTime;
-            });
-            
-            if (weekGrades.length > 0) {
-              reportText += `  📊 Neue Bewertungen (${weekGrades.length}):\n`;
-              weekGrades.forEach(grade => {
-                const gradeDate = new Date(grade.dategraded * 1000).toLocaleDateString('de-DE');
-                reportText += `    • ${grade.itemname} - ${grade.coursename}\n`;
-                reportText += `      🎯 Note: ${grade.graderaw}/${grade.grademax} (${gradeDate})\n`;
-              });
-            } else {
-              reportText += `    📊 Bewertungen: Keine neuen Bewertungen diese Woche\n`;
-            }
-            
-            // 4. Active Courses Summary
-            const activeCourses = logineoData.courses.filter(course => course.visible);
-            reportText += `  📚 Aktive Kurse: ${activeCourses.length} eingeschrieben\n`;
-            if (activeCourses.length > 0) {
-              activeCourses.slice(0, 5).forEach(course => {
-                reportText += `    • ${course.fullname} (${course.shortname})\n`;
-              });
-              if (activeCourses.length > 5) {
-                reportText += `    ... und ${activeCourses.length - 5} weitere\n`;
+            // 3. Assignment Overview (all assignments with status)
+            if (logineoData.assignments.length > 0) {
+              reportText += `  📋 Aufgaben-Übersicht (${logineoData.assignments.length}):\n`;
+              const overview = generateAssignmentOverview(logineoData.assignments);
+              // Clean up the overview text for report
+              const cleanOverview = overview
+                .replace(/# 📚 Alle Upload-Hausaufgaben im Überblick\n\n/g, '')
+                .replace(/\*\*/g, '')
+                .replace(/`/g, '')
+                .split('\n')
+                .filter(line => line.trim())
+                .slice(0, 8) // Limit to first 8 assignments
+                .join('\n');
+              reportText += cleanOverview;
+              if (logineoData.assignments.length > 8) {
+                reportText += `\n    • ... und ${logineoData.assignments.length - 8} weitere Aufgaben\n`;
               }
+            } else {
+              reportText += `    📋 Aufgaben: Keine Aufgaben gefunden\n`;
             }
             
             // Show status indicator
-            reportText += `  ℹ️ Datenquelle: Logineo/Moodle (${logineoData.userInfo.username})\n`;
+            reportText += `  ℹ️ Datenquelle: Logineo/Moodle (${credentials.username})\n`;
             
           } catch (error) {
             console.error('Error loading Logineo/Moodle data:', error);
@@ -561,11 +563,23 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
     });
     
     try {
-      const logineoData = await getAllLogineoData();
+      // Test connection with new service
+      const credentials = {
+        username: config.logineo_username || '',
+        password: config.logineo_password || '',
+        baseUrl: config.logineo_base_url || 'https://188086.logineonrw-lms.de'
+      };
+
+      const isConnected = await logineoService.testConnection(credentials);
+      if (!isConnected) {
+        throw new Error('Verbindungstest fehlgeschlagen');
+      }
+
+      const logineoData = await logineoService.getAllLogineoData(credentials);
       setConnectionStatus(prev => ({ ...prev, logineo: 'connected' }));
       setConnectionMessages(prev => ({ 
         ...prev, 
-        logineo: `Erfolgreich verbunden! ${logineoData.summary.totalCourses} Kurse, ${logineoData.summary.totalAssignments} Aufgaben gefunden` 
+        logineo: `Erfolgreich verbunden! ${logineoData.courses.length} Kurse, ${logineoData.assignments.length} Aufgaben gefunden` 
       }));
       console.log('📚 Logineo Data:', logineoData);
     } catch (error) {
@@ -987,6 +1001,16 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
                   • <strong>Passwort:</strong> {config.logineo_password ? '••••••••' : 'Nicht konfiguriert'}<br/>
                   • <strong>URL:</strong> https://188086.logineonrw-lms.de
                 </div>
+                
+                {/* Quick Access to Assignments */}
+                {connectionStatus.logineo === 'connected' && (
+                  <div className="quickActions">
+                    <Link to="/assignments" className="assignments-link">
+                      <BookOpen size={16} />
+                      Aufgaben-Übersicht öffnen
+                    </Link>
+                  </div>
+                )}
                 
                 {/* Connection Status */}
                 <div className="connectionStatus">

@@ -56,28 +56,16 @@ const DesktopHeader: React.FC = () => {
         {/* Desktop Navigation */}
         <nav className={styles.desktopNav}>
           <Link 
-            to="/" 
-            className={`${styles.navLink} ${isActive('/') ? styles.active : ''}`}
+            to="/berichtsheft" 
+            className={`${styles.navLink} ${isActive('/berichtsheft') ? styles.active : ''}`}
           >
-            Home
+            Berichtsheft
           </Link>
           <Link 
-            to="/page-1" 
-            className={`${styles.navLink} ${isActive('/page-1') ? styles.active : ''}`}
+            to="/logineo" 
+            className={`${styles.navLink} ${isActive('/logineo') ? styles.active : ''}`}
           >
-            Page 1
-          </Link>
-          <Link 
-            to="/page-2" 
-            className={`${styles.navLink} ${isActive('/page-2') ? styles.active : ''}`}
-          >
-            Page 2
-          </Link>
-          <Link 
-            to="/page-3" 
-            className={`${styles.navLink} ${isActive('/page-3') ? styles.active : ''}`}
-          >
-            Page 3
+            Logineo
           </Link>
         </nav>
 
@@ -105,28 +93,16 @@ const DesktopHeader: React.FC = () => {
             {/* Navigation Links */}
             <div className={styles.mobileNavLinks}>
               <Link 
-                to="/" 
-                className={`${styles.mobileNavLink} ${isActive('/') ? styles.active : ''}`}
+                to="/berichtsheft" 
+                className={`${styles.mobileNavLink} ${isActive('/berichtsheft') ? styles.active : ''}`}
               >
-                Home
+                Berichtsheft
               </Link>
               <Link 
-                to="/page-1" 
-                className={`${styles.mobileNavLink} ${isActive('/page-1') ? styles.active : ''}`}
+                to="/logineo" 
+                className={`${styles.mobileNavLink} ${isActive('/logineo') ? styles.active : ''}`}
               >
-                Page 1
-              </Link>
-              <Link 
-                to="/page-2" 
-                className={`${styles.mobileNavLink} ${isActive('/page-2') ? styles.active : ''}`}
-              >
-                Page 2
-              </Link>
-              <Link 
-                to="/page-3" 
-                className={`${styles.mobileNavLink} ${isActive('/page-3') ? styles.active : ''}`}
-              >
-                Page 3
+                Logineo
               </Link>
             </div>
 
