@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groq AI Berichtsheft-Generator Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            color: #1f2937;
+            margin: 0 0 8px 0;
+        }
+        
+        .header p {
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+        }
+        
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-right: 12px;
+        }
+        
+        .button:hover {
+            background: #2563eb;
+        }
+        
+        .button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .result h3 {
+            margin: 0 0 12px 0;
+            color: #1e293b;
+        }
+        
+        .result-text {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 16px;
+            display: none;
+        }
+        
+        .loading {
+            color: #6b7280;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Groq AI Berichtsheft-Generator</h1>
+            <p>Teste die Groq AI Integration direkt im Browser</p>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Ticket/Projekt Beschreibung:</label>
+            <textarea id="description" rows="3" placeholder="z.B. 'Bug in der Login-Funktion behoben'"></textarea>
+        </div>
+        
+        <button class="button" onclick="generateText()">✨ Berichtsheft-Text generieren</button>
+        <button class="button" onclick="clearAll()">🗑️ Löschen</button>
+        
+        <div id="error" class="error"></div>
+        
+        <div id="result" class="result">
+            <h3>📝 Generierter Berichtsheft-Text:</h3>
+            <div id="resultText" class="result-text"></div>
+        </div>
+    </div>
+
+    <script>
+        const GROQ_API_KEY = 'YOUR_GROQ_API_KEY_HERE';
+        const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+
+        async function generateText() {
+            const description = document.getElementById('description').value.trim();
+            const resultDiv = document.getElementById('result');
+            const resultText = document.getElementById('resultText');
+            const errorDiv = document.getElementById('error');
+            
+            if (!description) {
+                showError('Bitte gib eine Beschreibung ein');
+                return;
+            }
+            
+            // Loading state
+            resultDiv.style.display = 'block';
+            resultText.textContent = '🔄 Generiere Berichtsheft-Text...';
+            errorDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.1-8b-instant',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `Du bist ein hilfreicher Assistent, der Azubis beim Schreiben von Berichtsheft-Einträgen hilft. 
+                                
+                                Deine Aufgabe:
+                                - Schreibe maximal zwei einfache Stichpunkte basierend auf der Ticket-Beschreibung
+                                - Die Stichpunkte sollen beschreiben, was in dem Ticket zu tun war
+                                - Schreibe in der Vergangenheit aus Sicht eines Azubis, der das Ticket bearbeitet hat
+                                - Lasse Füllwörter wie "Ich habe" und "habe ich" weg
+                                - Verwende keinen Punkt am Ende der Stichpunkte
+                                - Gib nur die zwei Stichpunkte im Format zurück:
+                                  - <1.Stichpunkt>
+                                  - <2.Stichpunkt>`
+                            },
+                            {
+                                role: 'user',
+                                content: `Ticket Beschreibung: ${description}`
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Fehler: ${errorData.error?.message || response.statusText}`);
+                }
+
+                const data = await response.json();
+                const generatedText = data.choices[0]?.message?.content || 'Keine Antwort erhalten';
+                
+                resultText.textContent = generatedText;
+                
+            } catch (error) {
+                showError(`Fehler: ${error.message}`);
+                resultDiv.style.display = 'none';
+            }
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function clearAll() {
+            document.getElementById('description').value = '';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        // Test mit Beispiel-Text
+        document.getElementById('description').value = 'Bug in der Login-Funktion behoben';
+    </script>
+</body>
+</html>
