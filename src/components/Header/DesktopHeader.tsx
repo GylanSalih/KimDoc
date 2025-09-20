@@ -37,20 +37,20 @@ const DesktopHeader: React.FC = () => {
         {/* Logo */}
         <Link to="/" className={styles.logo}>
           <img 
-            src="/assets/img/Logo_Black.png" 
-            alt="PetalStack Logo" 
+            src="/assets/img/kim_avatar_old.webp" 
+            alt="KimDoc Logo" 
             className={styles.logoLight}
             width={32}
             height={32}
           />
           <img 
-            src="/assets/img/Logo_White.png" 
-            alt="PetalStack Logo" 
+            src="/assets/img/kim_avatar_old.webp" 
+            alt="KimDoc Logo" 
             className={styles.logoDark}
             width={32}
             height={32}
           />
-          <span>PetalStack</span>
+          <span>KimDoc</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -66,6 +66,18 @@ const DesktopHeader: React.FC = () => {
             className={`${styles.navLink} ${isActive('/logineo') ? styles.active : ''}`}
           >
             Logineo
+          </Link>
+          <Link 
+            to="/schulpausen-timer" 
+            className={`${styles.navLink} ${isActive('/schulpausen-timer') ? styles.active : ''}`}
+          >
+            Schulpausen
+          </Link>
+          <Link 
+            to="/quiz" 
+            className={`${styles.navLink} ${isActive('/quiz') ? styles.active : ''}`}
+          >
+            Quiz
           </Link>
         </nav>
 
@@ -103,6 +115,18 @@ const DesktopHeader: React.FC = () => {
                 className={`${styles.mobileNavLink} ${isActive('/logineo') ? styles.active : ''}`}
               >
                 Logineo
+              </Link>
+              <Link 
+                to="/schulpausen-timer" 
+                className={`${styles.mobileNavLink} ${isActive('/schulpausen-timer') ? styles.active : ''}`}
+              >
+                Schulpausen
+              </Link>
+              <Link 
+                to="/quiz" 
+                className={`${styles.mobileNavLink} ${isActive('/quiz') ? styles.active : ''}`}
+              >
+                Quiz
               </Link>
             </div>
 

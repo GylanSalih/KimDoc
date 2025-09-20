@@ -7,16 +7,9 @@ import {
   getEndOfWeek,
   formatDateGerman
 } from '../../utils/dateUtils';
-import { auth, getTimeTable, getPeriodContent, getAllWebUntisData, type Auth, type PeriodInfo } from '../../services/untisService';
-import { getAllLogineoData, logineoService, generateAssignmentOverview } from '../../services/logineoService';
-import { webUntisLibrary } from '../../services/webuntisLibrary';
-// Temporarily disabled problematic imports
-// import { getAbsences, type AbsenceData } from '../../services/absence';
-// import { getCommitsForUser, getPullrequestsForUser, getUser } from '../../services/bitbucket';
-// import type { User as BitbucketUser } from '../../types/bitbucket';
-// import { getTicketHeading } from '../../services/jira';
+import { auth, getAllWebUntisData, type Auth, type PeriodInfo } from '../../services/untisService';
+import { logineoService, generateAssignmentOverview } from '../../services/logineoService';
 import { config, loadConfig } from '../../utils/config';
-import type { TimeRange } from '../../types/time';
 import { generateAIContent, testAIConnection } from '../../services/aiService';
 
 interface WeekBlock {
@@ -25,15 +18,6 @@ interface WeekBlock {
   endDate: Date;
   isSelected: boolean;
   untisData?: PeriodInfo[];
-  // Temporarily disabled other data types
-  // absenceData?: AbsenceData;
-  // bitbucketData?: {
-  //   commits: any[];
-  //   pullRequests: any[];
-  // };
-  // jiraData?: {
-  //   tickets: any[];
-  // };
 }
 
 const PageOne: React.FC = () => {
@@ -42,29 +26,28 @@ const PageOne: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [apiSettings, setApiSettings] = useState({
-    // Temporarily disabled problematic APIs
-    // jira: { enabled: false, url: '', token: '', username: '' },
-    // bitbucket: { enabled: false, username: '', appPassword: '', repos: [] as string[] },
     untis: { enabled: false, username: '', password: '' },
-    // absence: { enabled: false, id: '', apikey: '' },
-    // azubiheft: { enabled: false, username: '', password: '' },
     ai: { enabled: false, method: 'groq', openaiKey: '', groqKey: '', ollamaModel: 'llama-3.1-8b-instant' }
   });
+  const [logineoCredentials, setLogineoCredentials] = useState({
+    username: '',
+    password: ''
+  });
+  const [logineoLoginMode, setLogineoLoginMode] = useState<'config' | 'manual'>('config');
+  const [webuntisCredentials, setWebuntisCredentials] = useState({
+    username: '',
+    password: '',
+    server: ''
+  });
+  const [webuntisLoginMode, setWebuntisLoginMode] = useState<'config' | 'manual'>('config');
   const [connectionStatus, setConnectionStatus] = useState<Record<string, 'disconnected' | 'connecting' | 'connected' | 'error'>>({
     untis: 'disconnected',
     logineo: 'disconnected',
     ai: 'disconnected'
-    // Temporarily disabled other connection statuses
-    // jira: 'disconnected',
-    // bitbucket: 'disconnected',
-    // absence: 'disconnected',
-    // azubiheft: 'disconnected'
   });
   const [connectionMessages, setConnectionMessages] = useState<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
-  // Temporarily disabled problematic state
-  // const [bitbucketUser, setBitbucketUser] = useState<BitbucketUser | null>(null);
   const [untisAuth, setUntisAuth] = useState<Auth | null>(null);
 
   // Load config on component mount
@@ -73,7 +56,6 @@ const PageOne: React.FC = () => {
       try {
         const loadedConfig = await loadConfig();
         if (loadedConfig) {
-          // Update API settings with loaded config (only available services)
           setApiSettings(prev => ({
             ...prev,
             untis: {
@@ -92,14 +74,12 @@ const PageOne: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to load config:', error);
-        // Continue with default settings if config loading fails
       }
     };
     
     initializeConfig();
   }, []);
 
-  // Generate available months (next 3 years until August 2028)
   const availableMonths = useMemo(() => {
     const months = [];
     const today = new Date();
@@ -115,7 +95,6 @@ const PageOne: React.FC = () => {
     return months;
   }, []);
 
-  // Generate weeks for selected month
   const weeks = useMemo(() => {
     const year = selectedMonth.getFullYear();
     const month = selectedMonth.getMonth();
@@ -126,10 +105,8 @@ const PageOne: React.FC = () => {
     const weeks: WeekBlock[] = [];
     let weekId = 0;
     
-    // Start from the Monday of the first week that contains the first day of the month
     const startOfFirstWeek = getStartOfWeek(firstDay);
     
-    // Get the Friday of the last week that contains the last day of the month
     const endOfLastWeek = getEndOfWeek(lastDay);
     
     let currentDate = new Date(startOfFirstWeek);
@@ -175,13 +152,7 @@ const PageOne: React.FC = () => {
         setGenerationProgress(`Verarbeite Woche ${week.id + 1}...`);
         reportText += `\nWoche ${week.id + 1}: ${formatDateGerman(week.startDate)} - ${formatDateGerman(week.endDate)}\n`;
         
-        // TimeRange for potential future use with other APIs
-        // const timeRange: TimeRange = {
-        //   from: week.startDate,
-        //   to: week.endDate
-        // };
         
-                  // Fetch comprehensive WebUntis data if connected
         if (connectionStatus.untis === 'connected' && untisAuth) {
           setGenerationProgress(`Lade alle WebUntis-Daten für Woche ${week.id + 1}...`);
           reportText += `📚 WebUntis-Daten für Woche ${week.id + 1}:\n`;
@@ -189,29 +160,23 @@ const PageOne: React.FC = () => {
           try {
             console.log(`Loading comprehensive WebUntis data for week ${week.id + 1} starting ${week.startDate.toISOString()}`);
             
-            // Use the comprehensive API approach
-            const webUntisData = await getAllWebUntisData(untisAuth, week.startDate);
+            const webUntisData = await getAllWebUntisData();
             
-            // 1. User Info
             if (webUntisData.userInfo) {
-              const user = webUntisData.userInfo.data || webUntisData.userInfo;
-              reportText += `  👤 Schüler: ${user.longName || user.name || 'Unbekannt'}\n`;
-              reportText += `  🏫 Klasse: ${user.klasse || user.class || 'Unbekannt'}\n`;
+              const user = webUntisData.userInfo;
+              reportText += `  👤 Schüler: ${user.name || 'Unbekannt'}\n`;
+              reportText += `  🏫 Klasse: ${user.type || 'Unbekannt'}\n`;
             } else {
               reportText += `  👤 Schüler: Benutzerdaten nicht verfügbar\n`;
               reportText += `  🏫 Klasse: Klassendaten nicht verfügbar\n`;
             }
             
-            // 2. Timetable
-            if (webUntisData.timetable && webUntisData.timetable.size > 0) {
-              console.log(`Found ${webUntisData.timetable.size} days with periods`);
+            if (webUntisData.timetable && webUntisData.timetable.length > 0) {
+              console.log(`Found ${webUntisData.timetable.length} periods`);
               const allPeriods: PeriodInfo[] = [];
               
-              // Process all periods from the timetable
-              for (const [date, periods] of webUntisData.timetable) {
-                console.log(`Processing ${periods.length} periods for date ${date}`);
-                for (const period of periods) {
-                  // Create period info directly from period data
+              for (const period of webUntisData.timetable) {
+                console.log(`Processing period for date ${period.date}`);
                   const formatDateTime = (date: number, time: number): string => {
                     const year = Math.floor(date / 10000);
                     const month = Math.floor((date % 10000) / 100);
@@ -241,15 +206,14 @@ const PageOne: React.FC = () => {
                   };
                   
                   const periodInfo: PeriodInfo = {
-                    content: period.content || 'Unterrichtsinhalt nicht verfügbar',
-                    name: period.content || `Stunde ${Math.floor(period.startTime / 100)}:${(period.startTime % 100).toString().padStart(2, '0')}`,
+                    content: period.subject || 'Unterrichtsinhalt nicht verfügbar',
+                    name: period.subject || `Stunde ${Math.floor(period.startTime / 100)}:${(period.startTime % 100).toString().padStart(2, '0')}`,
                     date: formatDateTime(period.date, period.startTime),
                     minutesTaken: getMinutesBetweenTimes(period.startTime, period.endTime),
                     weekday: getWeekdayName(period.date)
                   };
                   allPeriods.push(periodInfo);
                   console.log(`Added period: ${periodInfo.name}`);
-                }
               }
               
               if (allPeriods.length > 0) {
@@ -265,7 +229,7 @@ const PageOne: React.FC = () => {
                 Object.entries(groupedByDay).forEach(([day, periods]) => {
                   reportText += `    ${day} (${periods.length} Stunden):\n`;
                   periods.forEach(period => {
-                    const startTime = period.date.includes('T') ? period.date.split('T')[1].substring(0, 5) : 'Unbekannt';
+                    const startTime = period.date.includes('T') ? period.date.split('T')[1]?.substring(0, 5) : 'Unbekannt';
                     reportText += `      - ${startTime}: ${period.name}\n`;
                   });
                 });
@@ -276,7 +240,6 @@ const PageOne: React.FC = () => {
               reportText += `    📅 Stundenplan: Keine Daten für diese Woche verfügbar\n`;
             }
             
-            // 3. Homework
             if (webUntisData.homework && webUntisData.homework.length > 0) {
               reportText += `  📝 Hausaufgaben (${webUntisData.homework.length}):\n`;
               webUntisData.homework.forEach((hw: any) => {
@@ -287,7 +250,6 @@ const PageOne: React.FC = () => {
               reportText += `    📝 Hausaufgaben: Keine für diese Woche\n`;
             }
             
-            // 4. Exams
             if (webUntisData.exams && webUntisData.exams.length > 0) {
               reportText += `  📋 Prüfungen (${webUntisData.exams.length}):\n`;
               webUntisData.exams.forEach((exam: any) => {
@@ -298,18 +260,9 @@ const PageOne: React.FC = () => {
               reportText += `    📋 Prüfungen: Keine für diese Woche\n`;
             }
             
-            // 5. Absences
-            if (webUntisData.absences && webUntisData.absences.length > 0) {
-              reportText += `  🚫 Abwesenheiten (${webUntisData.absences.length}):\n`;
-              webUntisData.absences.forEach((absence: any) => {
-                const absenceDate = absence.date ? new Date(absence.date).toLocaleDateString('de-DE') : 'Unbekannt';
-                reportText += `    - ${absenceDate}: ${absence.reason || 'Kein Grund angegeben'}\n`;
-              });
-            } else {
-              reportText += `    🚫 Abwesenheiten: Keine für diese Woche\n`;
-            }
+            // Note: Absences are not available in the current WebUntis data structure
+            reportText += `  🚫 Abwesenheiten: Nicht verfügbar in der aktuellen API\n`;
             
-            // Show status indicator
             reportText += `  ℹ️ Datenquelle: WebUntis (${untisAuth.baseUrl})\n`;
             
           } catch (error) {
@@ -322,7 +275,6 @@ const PageOne: React.FC = () => {
           reportText += `    💡 Aktiviere WebUntis in den API-Einstellungen und verbinde dich\n`;
         }
 
-        // Fetch Logineo/Moodle data if connected
         if (connectionStatus.logineo === 'connected') {
           setGenerationProgress(`Lade Logineo/Moodle-Daten für Woche ${week.id + 1}...`);
           reportText += `\n🎓 Logineo/Moodle-Daten für Woche ${week.id + 1}:\n`;
@@ -338,13 +290,11 @@ const PageOne: React.FC = () => {
 
             const logineoData = await logineoService.getAllLogineoData(credentials);
             
-            // Filter data for current week
             const weekStart = week.startDate;
             const weekEnd = week.endDate;
             const weekStartTime = weekStart.getTime();
             const weekEndTime = weekEnd.getTime();
             
-            // 1. Course Summary
             if (logineoData.courses.length > 0) {
               reportText += `  📚 Kurse (${logineoData.courses.length}):\n`;
               logineoData.courses.slice(0, 5).forEach(course => {
@@ -356,7 +306,6 @@ const PageOne: React.FC = () => {
               }
             }
             
-            // 2. Current Week Assignments (due this week)
             const weekAssignments = logineoData.assignments.filter(assignment => {
               if (!assignment.duedate) return false;
               const dueDate = assignment.duedate * 1000; // Convert to milliseconds
@@ -376,11 +325,9 @@ const PageOne: React.FC = () => {
               reportText += `    📝 Aufgaben: Keine fälligen Aufgaben diese Woche\n`;
             }
             
-            // 3. Assignment Overview (all assignments with status)
             if (logineoData.assignments.length > 0) {
               reportText += `  📋 Aufgaben-Übersicht (${logineoData.assignments.length}):\n`;
               const overview = generateAssignmentOverview(logineoData.assignments);
-              // Clean up the overview text for report
               const cleanOverview = overview
                 .replace(/# 📚 Alle Upload-Hausaufgaben im Überblick\n\n/g, '')
                 .replace(/\*\*/g, '')
@@ -397,7 +344,6 @@ const PageOne: React.FC = () => {
               reportText += `    📋 Aufgaben: Keine Aufgaben gefunden\n`;
             }
             
-            // Show status indicator
             reportText += `  ℹ️ Datenquelle: Logineo/Moodle (${credentials.username})\n`;
             
           } catch (error) {
@@ -409,54 +355,10 @@ const PageOne: React.FC = () => {
           reportText += `\n🎓 Logineo/Moodle-Daten: ⚠️ Logineo nicht verbunden\n`;
           reportText += `    💡 Verbinde dich mit Logineo/Moodle in den API-Einstellungen\n`;
         }
-        
-        // Temporarily disabled other data fetching
-        // Fetch Absence data if connected
-        // if (connectionStatus.absence === 'connected') {
-        //   setGenerationProgress(`Lade Abwesenheits-Daten für Woche ${week.id + 1}...`);
-        //   try {
-        //     const [absenceData] = await getAbsences(timeRange);
-        //     if (absenceData.absences.length > 0 || absenceData.holidays.length > 0) {
-        //       reportText += `📅 Abwesenheiten:\n`;
-        //       absenceData.absences.forEach((absence: any) => {
-        //         const date = new Date(absence.date);
-        //         reportText += `  ${date.toLocaleDateString('de-DE')}: ${absence.reason}\n`;
-        //       });
-        //       absenceData.holidays.forEach((holiday: any) => {
-        //         const date = new Date(holiday.date);
-        //         reportText += `  ${date.toLocaleDateString('de-DE')}: ${holiday.reason}\n`;
-        //       });
-        //     }
-        //   } catch (error) {
-        //     reportText += `    Fehler beim Laden der Abwesenheits-Daten\n`;
-        //   }
-        // }
-        
-        // Fetch Bitbucket data if connected
-        // if (connectionStatus.bitbucket === 'connected' && bitbucketUser) {
-        //   setGenerationProgress(`Lade Git-Aktivitäten für Woche ${week.id + 1}...`);
-        //   try {
-        //     const commits = await getCommitsForUser(bitbucketUser.uuid!, timeRange);
-        //     const pullRequests = await getPullrequestsForUser(bitbucketUser.uuid!, timeRange);
-        //     
-        //     if (commits.length > 0 || pullRequests.length > 0) {
-        //       reportText += `💻 Git-Aktivitäten:\n`;
-        //       if (commits.length > 0) {
-        //         reportText += `  Commits: ${commits.length}\n`;
-        //       }
-        //       if (pullRequests.length > 0) {
-        //         reportText += `  Pull Requests: ${pullRequests.length}\n`;
-        //       }
-        //     }
-        //   } catch (error) {
-        //     reportText += `    Fehler beim Laden der Git-Daten\n`;
-        //   }
-        // }
-        
+  
         reportText += `\n`;
       }
       
-      // Generate AI content if enabled
       if (apiSettings.ai.enabled) {
         setGenerationProgress('Generiere Berichtsheft-Einträge mit KI...');
         reportText += `\n🤖 KI-generierte Berichtsheft-Einträge:\n`;
@@ -521,11 +423,25 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
     setSelectedWeeks(new Set()); // Clear selected weeks when changing month
   };
 
-  // WebUntis connection functions
   const handleUntisConnect = async () => {
-    if (!apiSettings.untis.username || !apiSettings.untis.password) {
+    const username = webuntisLoginMode === 'manual' 
+      ? webuntisCredentials.username 
+      : apiSettings.untis.username;
+    const password = webuntisLoginMode === 'manual' 
+      ? webuntisCredentials.password 
+      : apiSettings.untis.password;
+    const server = webuntisLoginMode === 'manual' 
+      ? webuntisCredentials.server 
+      : (config as any).untis_server;
+
+    if (!username || !password || !server) {
       setConnectionStatus(prev => ({ ...prev, untis: 'error' }));
-      setConnectionMessages(prev => ({ ...prev, untis: 'WebUntis-Daten nicht in config.json konfiguriert' }));
+      setConnectionMessages(prev => ({ 
+        ...prev, 
+        untis: webuntisLoginMode === 'manual' 
+          ? 'Bitte füllen Sie alle Felder aus' 
+          : 'WebUntis-Daten nicht in config.json konfiguriert' 
+      }));
       return;
     }
 
@@ -550,23 +466,25 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
     setConnectionMessages(prev => ({ ...prev, untis: '' }));
   };
 
-  // Logineo/Moodle connection functions
   const handleLogineoConnect = async () => {
     setConnectionStatus(prev => ({ ...prev, logineo: 'connecting' }));
     setConnectionMessages(prev => ({ ...prev, logineo: 'Verbinde mit Logineo/Moodle...' }));
     
-    // Debug: Log current config values
-    console.log('🔍 Debug - Config values:', {
-      logineo_username: config.logineo_username,
-      logineo_password: config.logineo_password ? '***GESETZT***' : 'NICHT GESETZT',
-      full_config: config
+    console.log('🔍 Debug - Credentials:', {
+      input_username: logineoCredentials.username,
+      input_password: logineoCredentials.password ? '***GESETZT***' : 'NICHT GESETZT',
+      config_username: config.logineo_username,
+      config_password: config.logineo_password ? '***GESETZT***' : 'NICHT GESETZT'
     });
     
     try {
-      // Test connection with new service
       const credentials = {
-        username: config.logineo_username || '',
-        password: config.logineo_password || '',
+        username: logineoLoginMode === 'manual' 
+          ? logineoCredentials.username 
+          : config.logineo_username || '',
+        password: logineoLoginMode === 'manual' 
+          ? logineoCredentials.password 
+          : config.logineo_password || '',
         baseUrl: config.logineo_base_url || 'https://188086.logineonrw-lms.de'
       };
 
@@ -642,71 +560,12 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
     setConnectionMessages(prev => ({ ...prev, ai: '' }));
   };
 
-  // Temporarily disabled problematic connection functions
-  // Bitbucket connection functions
-  // const handleBitbucketConnect = async () => {
-  //   if (!apiSettings.bitbucket.username || !apiSettings.bitbucket.appPassword) {
-  //     setConnectionStatus(prev => ({ ...prev, bitbucket: 'error' }));
-  //     setConnectionMessages(prev => ({ ...prev, bitbucket: 'Bitte Benutzername und App-Passwort ausfüllen' }));
-  //     return;
-  //   }
-
-  //   setConnectionStatus(prev => ({ ...prev, bitbucket: 'connecting' }));
-  //   setConnectionMessages(prev => ({ ...prev, bitbucket: 'Verbinde mit Bitbucket...' }));
-
-  //   try {
-  //     const user = await getUser();
-  //     setBitbucketUser(user);
-  //     setConnectionStatus(prev => ({ ...prev, bitbucket: 'connected' }));
-  //     setConnectionMessages(prev => ({ ...prev, bitbucket: 'Erfolgreich verbunden!' }));
-  //   } catch (error) {
-  //     setConnectionStatus(prev => ({ ...prev, bitbucket: 'error' }));
-  //     setConnectionMessages(prev => ({ ...prev, bitbucket: 'Verbindung fehlgeschlagen' }));
-  //   }
-  // };
-
-  // const handleBitbucketDisconnect = async () => {
-  //   setBitbucketUser(null);
-  //   setConnectionStatus(prev => ({ ...prev, bitbucket: 'disconnected' }));
-  //   setConnectionMessages(prev => ({ ...prev, bitbucket: '' }));
-  // };
-
-  // Jira connection functions
-  // const handleJiraConnect = async () => {
-  //   if (!apiSettings.jira.url || !apiSettings.jira.username || !apiSettings.jira.token) {
-  //     setConnectionStatus(prev => ({ ...prev, jira: 'error' }));
-  //     setConnectionMessages(prev => ({ ...prev, jira: 'Bitte URL, Benutzername und Token ausfüllen' }));
-  //     return;
-  //   }
-
-  //   setConnectionStatus(prev => ({ ...prev, jira: 'connecting' }));
-  //   setConnectionMessages(prev => ({ ...prev, jira: 'Teste Jira-Verbindung...' }));
-
-  //   try {
-  //     // Test connection by trying to get a ticket
-  //     await getTicketHeading('TEST-1');
-  //     setConnectionStatus(prev => ({ ...prev, jira: 'connected' }));
-  //     setConnectionMessages(prev => ({ ...prev, jira: 'Erfolgreich verbunden!' }));
-  //   } catch (error) {
-  //     setConnectionStatus(prev => ({ ...prev, jira: 'error' }));
-  //     setConnectionMessages(prev => ({ ...prev, jira: 'Verbindung fehlgeschlagen' }));
-  //   }
-  // };
-
-  // const handleJiraDisconnect = async () => {
-  //   setConnectionStatus(prev => ({ ...prev, jira: 'disconnected' }));
-  //   setConnectionMessages(prev => ({ ...prev, jira: '' }));
-  // };
-
   return (
     <div className="pageOne">
       <div className="container">
         {/* Header */}
         <div className="header">
-          <Link to="/" className="backButton">
-            <ArrowLeft size={20} />
-            Back to Home
-          </Link>
+
           <h1>Berichtsheft Helper</h1>
           <p>Automatische Generierung von Berichtsheft-Einträgen mit KI</p>
         </div>
@@ -719,191 +578,8 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
           </div>
           
           <div className="apiGrid">
-            {/* Temporarily disabled problematic API cards */}
-            {/* <div className="apiCard">
-              <div className="apiHeader">
-                <div className="apiIcon"><Bug size={20} /></div>
-                <h3>Jira</h3>
-                <label className="toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={apiSettings.jira.enabled}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      jira: { ...prev.jira, enabled: e.target.checked }
-                    }))}
-                  />
-                  <span className="slider"></span>
-                </label>
-              </div>
-              {apiSettings.jira.enabled && (
-                <div className="apiFields">
-                  <input 
-                    type="text" 
-                    placeholder="Jira URL" 
-                    value={apiSettings.jira.url}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      jira: { ...prev.jira, url: e.target.value }
-                    }))}
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Benutzername" 
-                    value={apiSettings.jira.username}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      jira: { ...prev.jira, username: e.target.value }
-                    }))}
-                  />
-                  <input 
-                    type="password" 
-                    placeholder="API Token" 
-                    value={apiSettings.jira.token}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      jira: { ...prev.jira, token: e.target.value }
-                    }))}
-                  />
-                  
-                  <div className="connectionStatus">
-                    {connectionStatus.jira === 'connecting' && (
-                      <div className="statusMessage">
-                        <Loader size={16} className="spinning" />
-                        {connectionMessages.jira}
-                      </div>
-                    )}
-                    {connectionStatus.jira === 'connected' && (
-                      <div className="statusMessage">
-                        <CheckCircle size={16} className="success" />
-                        {connectionMessages.jira}
-                      </div>
-                    )}
-                    {connectionStatus.jira === 'error' && (
-                      <div className="statusMessage">
-                        <XCircle size={16} className="error" />
-                        {connectionMessages.jira}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="connectionButtons">
-                    {connectionStatus.jira === 'connected' ? (
-                      <button 
-                        className="disconnectButton"
-                        onClick={handleJiraDisconnect}
-                      >
-                        Trennen
-                      </button>
-                    ) : (
-                      <button 
-                        className="connectButton"
-                        onClick={handleJiraConnect}
-                        disabled={connectionStatus.jira === 'connecting'}
-                      >
-                        {connectionStatus.jira === 'connecting' ? (
-                          <>
-                            <Loader size={16} className="spinning" />
-                            Verbinde...
-                          </>
-                        ) : (
-                          'Verbinden'
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="apiCard">
-              <div className="apiHeader">
-                <div className="apiIcon"><GitBranch size={20} /></div>
-                <h3>Bitbucket</h3>
-                <label className="toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={apiSettings.bitbucket.enabled}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      bitbucket: { ...prev.bitbucket, enabled: e.target.checked }
-                    }))}
-                  />
-                  <span className="slider"></span>
-                </label>
-              </div>
-              {apiSettings.bitbucket.enabled && (
-                <div className="apiFields">
-                  <input 
-                    type="text" 
-                    placeholder="Benutzername" 
-                    value={apiSettings.bitbucket.username}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      bitbucket: { ...prev.bitbucket, username: e.target.value }
-                    }))}
-                  />
-                  <input 
-                    type="password" 
-                    placeholder="App-Passwort" 
-                    value={apiSettings.bitbucket.appPassword}
-                    onChange={(e) => setApiSettings(prev => ({
-                      ...prev,
-                      bitbucket: { ...prev.bitbucket, appPassword: e.target.value }
-                    }))}
-                  />
-                  
-                  <div className="connectionStatus">
-                    {connectionStatus.bitbucket === 'connecting' && (
-                      <div className="statusMessage">
-                        <Loader size={16} className="spinning" />
-                        {connectionMessages.bitbucket}
-                      </div>
-                    )}
-                    {connectionStatus.bitbucket === 'connected' && (
-                      <div className="statusMessage">
-                        <CheckCircle size={16} className="success" />
-                        {connectionMessages.bitbucket}
-                      </div>
-                    )}
-                    {connectionStatus.bitbucket === 'error' && (
-                      <div className="statusMessage">
-                        <XCircle size={16} className="error" />
-                        {connectionMessages.bitbucket}
-                      </div>
-                    )}
-                  </div>
-
-                  
-                  <div className="connectionButtons">
-                    {connectionStatus.bitbucket === 'connected' ? (
-                      <button 
-                        className="disconnectButton"
-                        onClick={handleBitbucketDisconnect}
-                      >
-                        Trennen
-                      </button>
-                    ) : (
-                      <button 
-                        className="connectButton"
-                        onClick={handleBitbucketConnect}
-                        disabled={connectionStatus.bitbucket === 'connecting'}
-                      >
-                        {connectionStatus.bitbucket === 'connecting' ? (
-                          <>
-                            <Loader size={16} className="spinning" />
-                            Verbinde...
-                          </>
-                        ) : (
-                          'Verbinden'
-                        )}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div> */}
-
+     
+     
             <div className="apiCard">
               <div className="apiHeader">
                 <div className="apiIcon">📚</div>
@@ -923,11 +599,76 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
               {apiSettings.untis.enabled && (
                 <div className="apiFields">
                   <div className="helpText">
-                    <strong>WebUntis-Verbindung:</strong><br/>
-                    • <strong>Benutzername:</strong> {apiSettings.untis.username || 'Nicht konfiguriert'}<br/>
-                    • <strong>Passwort:</strong> {apiSettings.untis.password ? '••••••••' : 'Nicht konfiguriert'}<br/>
-                    • <strong>Schulname:</strong> Städt. Heinrich-Hertz-Schule Düsseldorf
+                    <strong>WebUntis-Verbindung:</strong>
                   </div>
+                  
+                  {/* Login Mode Toggle */}
+                  <div className="loginModeToggle">
+                    <div className="toggleGroup">
+                      <label className={`toggleOption ${webuntisLoginMode === 'config' ? 'active' : ''}`}>
+                        <input
+                          type="radio"
+                          name="webuntis-mode"
+                          value="config"
+                          checked={webuntisLoginMode === 'config'}
+                          onChange={() => setWebuntisLoginMode('config')}
+                        />
+                        <span>📁 Aus JSON laden</span>
+                      </label>
+                      <label className={`toggleOption ${webuntisLoginMode === 'manual' ? 'active' : ''}`}>
+                        <input
+                          type="radio"
+                          name="webuntis-mode"
+                          value="manual"
+                          checked={webuntisLoginMode === 'manual'}
+                          onChange={() => setWebuntisLoginMode('manual')}
+                        />
+                        <span>✏️ Manuell eingeben</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Config Mode Display */}
+                  {webuntisLoginMode === 'config' && (
+                    <div className="configDisplay">
+                      <div className="configInfo">
+                        <p><strong>Benutzername:</strong> {apiSettings.untis.username || 'Nicht konfiguriert'}</p>
+                        <p><strong>Passwort:</strong> {apiSettings.untis.password ? '••••••••' : 'Nicht konfiguriert'}</p>
+                        <p><strong>Schulname:</strong> Städt. Heinrich-Hertz-Schule Düsseldorf</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Manual Mode Input Fields */}
+                  {webuntisLoginMode === 'manual' && (
+                    <div className="credentialInputs">
+                      <div className="inputGroup">
+                        <label htmlFor="webuntis-username">Benutzername:</label>
+                        <input
+                          id="webuntis-username"
+                          type="text"
+                          value={webuntisCredentials.username}
+                          onChange={(e) => setWebuntisCredentials(prev => ({ ...prev, username: e.target.value }))}
+                          placeholder="z.B. vorname.na"
+                          className="credentialInput"
+                        />
+                      </div>
+                      
+                      <div className="inputGroup">
+                        <label htmlFor="webuntis-password">Passwort:</label>
+                        <input
+                          id="webuntis-password"
+                          type="password"
+                          value={webuntisCredentials.password}
+                          onChange={(e) => setWebuntisCredentials(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="Dein Passwort"
+                          className="credentialInput"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+
                   
                   {/* Connection Status */}
                   <div className="connectionStatus">
@@ -996,11 +737,74 @@ Erstelle jetzt 2-3 professionelle Berichtsheft-Einträge basierend auf den tats�
               </div>
               <div className="apiFields">
                 <div className="helpText">
-                  <strong>Logineo/Moodle-Verbindung:</strong><br/>
-                  • <strong>Benutzername:</strong> {config.logineo_username || 'Nicht konfiguriert'}<br/>
-                  • <strong>Passwort:</strong> {config.logineo_password ? '••••••••' : 'Nicht konfiguriert'}<br/>
-                  • <strong>URL:</strong> https://188086.logineonrw-lms.de
+                  <strong>Logineo/Moodle-Verbindung:</strong>
                 </div>
+                
+                {/* Login Mode Toggle */}
+                <div className="loginModeToggle">
+                  <div className="toggleGroup">
+                    <label className={`toggleOption ${logineoLoginMode === 'config' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="logineo-mode"
+                        value="config"
+                        checked={logineoLoginMode === 'config'}
+                        onChange={() => setLogineoLoginMode('config')}
+                      />
+                      <span>📁 Aus JSON laden</span>
+                    </label>
+                    <label className={`toggleOption ${logineoLoginMode === 'manual' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="logineo-mode"
+                        value="manual"
+                        checked={logineoLoginMode === 'manual'}
+                        onChange={() => setLogineoLoginMode('manual')}
+                      />
+                      <span>✏️ Manuell eingeben</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Config Mode Display */}
+                {logineoLoginMode === 'config' && (
+                  <div className="configDisplay">
+                    <div className="configInfo">
+                      <p><strong>Benutzername:</strong> {config.logineo_username || 'Nicht konfiguriert'}</p>
+                      <p><strong>Passwort:</strong> {config.logineo_password ? '••••••••' : 'Nicht konfiguriert'}</p>
+                      <p><strong>URL:</strong> https://188086.logineonrw-lms.de</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Manual Mode Input Fields */}
+                {logineoLoginMode === 'manual' && (
+                  <div className="credentialInputs">
+                    <div className="inputGroup">
+                      <label htmlFor="logineo-username">Benutzername:</label>
+                      <input
+                        id="logineo-username"
+                        type="text"
+                        value={logineoCredentials.username}
+                        onChange={(e) => setLogineoCredentials(prev => ({ ...prev, username: e.target.value }))}
+                        placeholder="z.B. nachname.vorname"
+                        className="credentialInput"
+                      />
+                    </div>
+                    
+                    <div className="inputGroup">
+                      <label htmlFor="logineo-password">Passwort:</label>
+                      <input
+                        id="logineo-password"
+                        type="password"
+                        value={logineoCredentials.password}
+                        onChange={(e) => setLogineoCredentials(prev => ({ ...prev, password: e.target.value }))}
+                        placeholder="Dein Passwort"
+                        className="credentialInput"
+                      />
+                    </div>
+                  </div>
+                )}
                 
                 {/* Quick Access to Assignments */}
                 {connectionStatus.logineo === 'connected' && (

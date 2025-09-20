@@ -16,6 +16,7 @@ export interface Config {
   untis_password: string;
   logineo_username: string;
   logineo_password: string;
+  logineo_base_url?: string;
   openai_key: string;
   groq_key: string;
   ai_method: string;

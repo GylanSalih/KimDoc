@@ -9,6 +9,8 @@ import PageOne from './Pages/PageOne/PageOne';
 import PageTwo from './Pages/PageTwo/PageTwo';
 import PageThree from './Pages/PageThree/PageThree';
 import Logineo from './Pages/Logineo/Logineo';
+import Quiz from './Pages/Quiz/Quiz';
+import SchulpausenTimer from './Pages/SchulpausenTimer/SchulpausenTimer';
 import styles from './App.module.scss';
 
 import './fonts/fonts.css';
@@ -37,6 +39,8 @@ const AppContent: React.FC = () => {
           <Route path="/page-2" element={<PageTwo />} />
           <Route path="/page-3" element={<PageThree />} />
           <Route path="/logineo" element={<Logineo />} />
+          <Route path="/quiz" element={<Quiz />} />
+          <Route path="/schulpausen-timer" element={<SchulpausenTimer />} />
         </Routes>
 
         <Footer />

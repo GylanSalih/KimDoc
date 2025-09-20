@@ -1,1 +1,14 @@
-hier die daten rein
+{
+    "untis_username": "nachnamevo",
+    "untis_password": "deinPasswordhier",
+    "untis_school": "heinrich-hertz-schule",
+    "untis_server": "ajax.webuntis.com",
+    "logineo_username": "nachname.vorname",
+    "logineo_password": "deinPasswordhier",
+    "logineo_base_url": "https://188086.logineonrw-lms.de",
+    "ai_method": "groq",
+    "openai_key": "",
+    "groq_key": "deingroqkey",
+    "ollama_model": "llama-3.1-8b-instant",
+    "ai_prompt": "Schreibe maximal zwei simple Stichpunkte anhand der folgenden Ticket Beschreibung. Die Stichpunkte sollen beinhalten, was in dem Ticket zu tun war. Schreibe in der vergangenheit, aus sicht eines azubis, der das Ticket bearbeitet hat. Lasse füllwörter wie 'Ich habe' und 'habe ich' weg. Beutze keinen Punkt am ende des Stickpunktes. Gebe mir nur die Zwei Stichpunkte im Format '- <1.Stichpunkt>\\n- <2.Stichpunkt>', sonst nichts. Ticket Beschreibung:\n{DESCRIPTION}"
+    }

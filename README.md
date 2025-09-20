@@ -39,12 +39,21 @@ cp public/config.json.example public/config.json
 ```
 
 4. **Config-Datei bearbeiten**
-Öffne `public/config.json` und trage deine API-Credentials ein:
+Öffne `public/config.json` und trage deine Daten ein:
 
+### 📝 Wichtige Hinweise zur Konfiguration:
+
+**WebUntis Benutzername:**
+- Format: `nachname` + `erste 2 Buchstaben des Vornamens`
+- Beispiel: Max Mustermann → `mustermannma`
+- Beispiel: Anna Schmidt → `schmidtan`
+
+**Vollständige config.json Beispiel:**
 ```json
 {
-  "untis_username": "dein-webuntis-benutzername",
+  "untis_username": "mustermannma",
   "untis_password": "dein-webuntis-passwort",
+  "untis_server": "https://hepta.webuntis.com/WebUntis/jsonrpc.do?school=deine-schule",
   "ai_method": "openai",
   "openai_key": "dein-openai-api-key",
   "groq_key": "dein-groq-api-key",
@@ -52,6 +61,28 @@ cp public/config.json.example public/config.json
   "ai_prompt": "Erstelle einen detaillierten Berichtsheft-Eintrag basierend auf den Stundenplan-Daten."
 }
 ```
+
+## 📋 Schritt-für-Schritt Anleitung
+
+### 1. **Config-Datei bearbeiten**
+1. Öffne die Datei `public/config.json` in einem Texteditor
+2. Trage deine WebUntis-Daten ein:
+   - **Username:** Nachname + erste 2 Buchstaben des Vornamens (z.B. `mustermannma`)
+   - **Password:** Dein WebUntis-Passwort
+   - **Server:** Deine WebUntis-Server-URL
+3. Wähle eine KI-Methode (OpenAI, Groq oder Ollama) und trage den entsprechenden API-Key ein
+
+### 2. **Anwendung verwenden**
+1. Starte die Anwendung mit `npm run dev`
+2. Gehe zu `http://localhost:5173/berichtsheft`
+3. Wähle eine Woche im Kalender aus
+4. Klicke auf "**Generieren**" um dein Berichtsheft zu erstellen
+5. Die KI erstellt automatisch passende Berichtsheft-Einträge basierend auf deinem Stundenplan
+
+### 3. **Zusätzliche Features**
+- **Schulpausen-Timer:** Zeigt die Zeit bis zur nächsten Pause an
+- **Quiz:** Interaktives Quiz zum Lernen
+- **Logineo-Integration:** Aufgaben und Noten abrufen
 
 ## 🛠️ Entwicklung
 

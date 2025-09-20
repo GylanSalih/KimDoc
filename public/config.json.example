@@ -1,9 +1,0 @@
-{
-  "untis_username": "dein-webuntis-benutzername",
-  "untis_password": "dein-webuntis-passwort",
-  "ai_method": "openai",
-  "openai_key": "sk-dein-openai-api-key-hier",
-  "groq_key": "gsk_dein-groq-api-key-hier",
-  "ollama_model": "llama2",
-  "ai_prompt": "Erstelle einen detaillierten Berichtsheft-Eintrag basierend auf den Stundenplan-Daten. Der Bericht sollte professionell und strukturiert sein, mit Fokus auf die gelernten Inhalte und praktischen Erfahrungen."
-}
